@@ -114,6 +114,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.env.local
+.env.prod
+.env.prod*
 
 # Spyder project settings
 .spyderproject
@@ -146,3 +149,5 @@ tmp/
 *.whl
 
 .ruff_cache/
+kb/
+*.pem

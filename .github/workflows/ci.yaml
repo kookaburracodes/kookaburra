@@ -9,27 +9,66 @@ on:
 
 jobs:
   ci:
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         python-version: ["3.11"]
       fail-fast: false
+
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: apt-get update
         run: sudo apt-get update -y
 
       - name: set up python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
           cache-dependency-path: "pyproject.toml"
 
-      - name: install dependencies
+      - name: install
         run: ./scripts/install.sh
 
-      - name: run tests
+      - name: lint
+        run: ./scripts/lint.sh
+
+      - name: run postgres
+        run: POSTGRES_DB=kookaburra_test ./scripts/run-postgres.sh
+
+      - name: test
         run: ./scripts/test.sh
+
+      # - name: docker-build
+      #   if: github.ref == 'refs/heads/main'
+      #   run: ./scripts/docker-build.sh
+
+      # - id: gcp_auth
+      #   uses: "google-github-actions/auth@v1"
+      #   if: github.ref == 'refs/heads/main'
+      #   with:
+      #     workload_identity_provider: "projects/${{secrets.GCP_PROJECT_ID}}/locations/global/workloadIdentityPools/kookaburra-idp-gh/providers/github"
+      #     service_account: "github-actions@kookaburra-codes-dev.iam.gserviceaccount.com"
+
+      # - name: set up docker to communicate via gcloud cli
+      #   if: github.ref == 'refs/heads/main'
+      #   run: |
+      #     gcloud auth login --brief --cred-file="${{ steps.gcp_auth.outputs.credentials_file_path }}"
+      #     gcloud auth configure-docker
+
+      # - name: docker-push
+      #   if: github.ref == 'refs/heads/main'
+      #   run: ./scripts/docker-push.sh
+
+      # - name: deploy to cloud run
+      #   if: github.ref == 'refs/heads/main'
+      #   run: |
+      #     echo ${{ secrets.ENV_PROD_FILE }} | base64 -d > .env.prod;
+      #     ./scripts/gcloud-beta-run-deploy.sh;

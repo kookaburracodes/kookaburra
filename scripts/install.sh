@@ -5,3 +5,5 @@ pip install --no-cache-dir -e '.[dev,test]'
 
 pre-commit install
 pre-commit autoupdate
+
+pyenv rehash

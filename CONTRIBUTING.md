@@ -32,6 +32,12 @@ which python pip
 
 You should see paths that use the .venv/bin in your current working directory.
 
+## Environment variables
+
+This project uses `python-dotenv` to manage environment variables. You can create a `.env.local` file in the root of the project and add your local environment variables there.
+
+A `.env.test` file is also provided for testing purposes, and a `.env.prod` file is used for production.
+
 ## Installing dependencies
 
 This project uses `pip` to manage our project's dependencies.
@@ -53,4 +59,18 @@ pyenv rehash
 
 ```sh
 ./scripts/test.sh
+```
+
+## Adding database migrations
+
+To add a new migration, run the following command;
+
+```sh
+alembic revision --autogenerate -m "my new migration"
+```
+
+Applying migrations
+
+```sh
+./scripts/alembic-upgrade-head.sh
 ```

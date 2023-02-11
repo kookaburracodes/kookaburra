@@ -3,6 +3,11 @@ source =
     kookaburra
     tests
 
+concurrency =
+    thread
+    greenlet
+    multiprocessing
+
 omit =
     *__init__.py
 
