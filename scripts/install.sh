@@ -3,7 +3,9 @@
 pip install --upgrade pip
 pip install --no-cache-dir -e '.[dev,test]'
 
-pre-commit install
-pre-commit autoupdate
+if [ -z "$CI" ]; then
+    pre-commit install
+    pre-commit autoupdate
 
-pyenv rehash
+    pyenv rehash
+fi
