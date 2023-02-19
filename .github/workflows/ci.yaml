@@ -46,29 +46,31 @@ jobs:
       - name: test
         run: ./scripts/test.sh
 
-      # - name: docker-build
-      #   if: github.ref == 'refs/heads/main'
-      #   run: ./scripts/docker-build.sh
+      - name: docker-build
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo ${{ secrets.KB_PEM_FILE }} | base64 -d > kookaburra-codes.2023-02-17.private-key.pem;
+          ./scripts/docker-build.sh
 
-      # - id: gcp_auth
-      #   uses: "google-github-actions/auth@v1"
-      #   if: github.ref == 'refs/heads/main'
-      #   with:
-      #     workload_identity_provider: "projects/${{secrets.GCP_PROJECT_ID}}/locations/global/workloadIdentityPools/kookaburra-idp-gh/providers/github"
-      #     service_account: "github-actions@kookaburra-codes-dev.iam.gserviceaccount.com"
+      - id: gcp_auth
+        uses: "google-github-actions/auth@v1"
+        if: github.ref == 'refs/heads/main'
+        with:
+          workload_identity_provider: "projects/${{secrets.GCP_PROJECT_ID}}/locations/global/workloadIdentityPools/kb-idp-gh/providers/github"
+          service_account: "github-actions@kookaburra-codes-dev.iam.gserviceaccount.com"
 
-      # - name: set up docker to communicate via gcloud cli
-      #   if: github.ref == 'refs/heads/main'
-      #   run: |
-      #     gcloud auth login --brief --cred-file="${{ steps.gcp_auth.outputs.credentials_file_path }}"
-      #     gcloud auth configure-docker
+      - name: set up docker to communicate via gcloud cli
+        if: github.ref == 'refs/heads/main'
+        run: |
+          gcloud auth login --brief --cred-file="${{ steps.gcp_auth.outputs.credentials_file_path }}"
+          gcloud auth configure-docker
 
-      # - name: docker-push
-      #   if: github.ref == 'refs/heads/main'
-      #   run: ./scripts/docker-push.sh
+      - name: docker-push
+        if: github.ref == 'refs/heads/main'
+        run: ./scripts/docker-push.sh
 
-      # - name: deploy to cloud run
-      #   if: github.ref == 'refs/heads/main'
-      #   run: |
-      #     echo ${{ secrets.ENV_PROD_FILE }} | base64 -d > .env.prod;
-      #     ./scripts/gcloud-beta-run-deploy.sh;
+      - name: deploy to cloud run
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo ${{ secrets.ENV_PROD_FILE }} | base64 -d > .env.prod;
+          ./scripts/gcloud-beta-run-deploy.sh;
