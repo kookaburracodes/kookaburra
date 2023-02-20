@@ -1,16 +1,40 @@
+import base64
 import json
+import os
 from typing import Callable, Union
 from uuid import uuid4
 
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
 from kookaburra.log import log
+from kookaburra.settings import env
 from kookaburra.types import (
     JsonResponseLoggerMessage,
     RequestLoggerMessage,
     ResponseLoggerMessage,
 )
+
+salt = os.urandom(16)
+kdf = PBKDF2HMAC(
+    algorithm=hashes.SHA256(),
+    length=32,
+    salt=os.urandom(16),
+    iterations=390_000,
+)
+_deriv = kdf.derive(env.API_SECRET_KEY.encode("utf8"))
+_fernet = Fernet(base64.urlsafe_b64encode(_deriv))
+
+
+def _encrypt(data: bytes) -> bytes:
+    return _fernet.encrypt(data)
+
+
+def _decrypt(data: str) -> bytes:
+    return _fernet.decrypt(data)
 
 
 class _APIRoute(APIRoute):

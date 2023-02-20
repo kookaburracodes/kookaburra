@@ -1,28 +1,35 @@
-from typing import List, Optional
+from typing import Optional
 
+from fastapi import Request
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from kookaburra.models import User, UserCreate
+from kookaburra.models import GitHubUser, GitHubUserCreate
 
 
-class UserService:
-    async def get_by_email(
-        self,
-        email: str,
-        psql: AsyncSession,
-    ) -> Optional[User]:
+class GitHubUserService:
+    async def get(self, psql: AsyncSession, githubuser_id: str) -> Optional[GitHubUser]:
         results = await psql.execute(
-            select(User).where(User.email == email),
+            select(GitHubUser).where(GitHubUser.id == githubuser_id),
+        )
+        return results.scalars().first()
+
+    async def get_by_name(
+        self,
+        username: str,
+        psql: AsyncSession,
+    ) -> Optional[GitHubUser]:
+        results = await psql.execute(
+            select(GitHubUser).where(GitHubUser.username == username),
         )
         return results.scalars().first()
 
     async def create(
         self,
-        user_create: UserCreate,
+        user_create: GitHubUserCreate,
         psql: AsyncSession,
-    ) -> User:
-        user = User(email=user_create.email)
+    ) -> GitHubUser:
+        user = GitHubUser(**user_create.dict())
         psql.add(user)
         await psql.commit()
         await psql.refresh(user)
@@ -33,27 +40,26 @@ class UserService:
         psql: AsyncSession,
         skip: int = 0,
         limit: int = 100,
-    ) -> list[User]:
+    ) -> list[GitHubUser]:
         results = await psql.execute(
-            select(User).offset(skip).limit(limit).order_by(desc(User.created_at))
+            select(GitHubUser)
+            .offset(skip)
+            .limit(limit)
+            .order_by(desc(GitHubUser.created_at))
         )
         return results.scalars().all()
 
-    async def create_from_list_of_emails(
-        self, emails: List, psql: AsyncSession
-    ) -> None:
-        for email in emails:
-            user = await self.get_by_email(
-                psql=psql,
-                email=email,
-            )
-            if not user:
-                await self.create(
-                    psql=psql,
-                    user_create=UserCreate(
-                        email=email,
-                    ),
-                )
+    async def get_current_user(
+        self,
+        request: Request,
+        psql: AsyncSession,
+    ) -> Optional[GitHubUser]:
+        if not request.user.is_authenticated:
+            return None
+        return await self.get_by_name(
+            username=request.user.raw_data["login"],
+            psql=psql,
+        )
 
 
-user_svc = UserService()
+githubuser_svc = GitHubUserService()

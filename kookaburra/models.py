@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from pydantic import UUID4, BaseModel, EmailStr
 from sqlalchemy import Column, DateTime
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import JSON, Field, Relationship, SQLModel
 
 
 class TimestampsMixin(BaseModel):
@@ -34,43 +34,54 @@ class UUIDMixin(BaseModel):
     )
 
 
-class BaseUser(SQLModel):
-    email: EmailStr = Field(
+class BaseGitHubUser(SQLModel):
+    username: str = Field(
         index=True,
         unique=True,
+        nullable=False,
+    )
+    emails: List[EmailStr] = Field(
+        sa_column=Column(JSON),
+        index=False,
+        nullable=False,
+    )
+    waitlisted: bool = Field(
+        default=True,
+        index=False,
         nullable=False,
     )
 
     class Config:
         schema_extra = {
             "example": {
-                "email": "user@example.com",
+                "username": "username",
+                "emails": ["user@example.com"],
             }
         }
 
 
-class UserCreate(BaseUser):
+class GitHubUserCreate(BaseGitHubUser):
     ...
 
 
-class User(
-    BaseUser,
+class GitHubUser(
+    BaseGitHubUser,
     UUIDMixin,
     TimestampsMixin,
     table=True,
 ):
-    __tablename__ = "users"
+    __tablename__ = "githubusers"
     llms: List["Llm"] = Relationship(
         sa_relationship_kwargs=dict(
-            back_populates="user",
+            back_populates="githubuser",
             cascade="all,delete,delete-orphan",
             order_by="Llm.created_at.desc()",
         ),
     )
 
 
-class UserRead(
-    BaseUser,
+class GitHubUserRead(
+    BaseGitHubUser,
     UUIDMixin,
     TimestampsMixin,
 ):
@@ -104,7 +115,7 @@ class BaseLlm(SQLModel):
 
 
 class LLMCreate(BaseLlm):
-    user_id: UUID4
+    githubuser_id: UUID4
 
 
 class Llm(
@@ -115,14 +126,14 @@ class Llm(
 ):
     __tablename__ = "llms"
 
-    user_id: UUID4 = Field(
+    githubuser_id: UUID4 = Field(
         default=None,
-        foreign_key="users.id",
+        foreign_key="githubusers.id",
         nullable=False,
     )
-    user: User = Relationship(
+    githubuser: GitHubUser = Relationship(
         back_populates="llms",
     )
 
 
-UserRead.update_forward_refs()
+GitHubUser.update_forward_refs()

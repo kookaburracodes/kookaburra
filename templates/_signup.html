@@ -1,0 +1,26 @@
+<div
+  class="relative overflow-hidden bg-black mb-10 pt-[120px] md:pt-[130px] lg:pt-[160px]"
+>
+    <div class="container p-5">
+        <div class="mb-10 flex flex-wrap items-center justify-center">
+            <div class="w-full md:w-1/2">
+                <h1 class="text-3xl font-bold text-white p-5">
+                    Welcome to the gum tree 🌳 home of the kookaburras
+                </h1>
+                <p class="text-white p-5">
+                    Sign up with your Github account. Kookaburra is free to use for now and doesn't require a credit card to sign up!
+                </p>
+                <div class="flex flex-col items-center justify-center">
+                    <div class="p-5">
+                        <button
+                            hx-get="/api/v0/login/gh"
+                            class="bg-white text-black rounded-lg py-3 px-6 text-base font-medium"
+                        >
+                            Sign Up with GitHub
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

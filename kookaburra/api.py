@@ -1,20 +1,25 @@
+import base64
+import urllib.parse
 from datetime import datetime
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
+from pydantic import UUID4
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from kookaburra import __version__
 from kookaburra.const import API_V0, LOCAL_DOMAINS
 from kookaburra.db import psql_db
 from kookaburra.gh import gh_svc
+from kookaburra.llm import llm_svc
 from kookaburra.log import log
+from kookaburra.models import GitHubUserCreate
 from kookaburra.settings import env
 from kookaburra.twilio import twilio_svc
-from kookaburra.types import GitHubToken, HealthResponse, SMSResponse
-from kookaburra.user import user_svc
-from kookaburra.utils import _APIRoute
+from kookaburra.types import BaseResponse, GitHubToken, HealthResponse, SMSResponse
+from kookaburra.user import githubuser_svc
+from kookaburra.utils import _APIRoute, _encrypt
 
 health_router = APIRouter(
     route_class=_APIRoute,
@@ -29,6 +34,11 @@ sms_router = APIRouter(
 gh_router = APIRouter(
     route_class=_APIRoute,
     tags=["gh"],
+    prefix=API_V0,
+)
+llm_router = APIRouter(
+    route_class=_APIRoute,
+    tags=["llm"],
     prefix=API_V0,
 )
 
@@ -64,7 +74,27 @@ async def send_message(
     Returns:
         MessageResponse: The response from the message.
     """
-    await twilio_svc.respond(request=request, psql=psql)
+    _body = await request.body()
+    body = {
+        v.split("=")[0]: v.split("=")[1]
+        for v in urllib.parse.unquote_plus(_body.decode("utf8")).split("&")
+    }
+    llm = await llm_svc.get_llm_by_phone_number(
+        phone_number=body["To"],
+        psql=psql,
+    )
+    if not llm:
+        log.error(f"Could not find LLM for phone number {body['To']}")
+        return SMSResponse(message="🪶")
+    response = await llm_svc.respond(
+        llm=llm,
+        message=body["Body"],
+    )
+    twilio_svc.send_message(
+        from_number=body["To"],
+        to_number=body["From"],
+        message=response.message,
+    )
     return SMSResponse(message="🪶")
 
 
@@ -114,16 +144,25 @@ async def auth_github(
         url=env.GH_TOKEN_ENDPOINT,
         authorization_response=str(request.url),
     )
-    gh_user = await gh_svc.get_user(
+    gh_user = await gh_svc.get_gh_user_data(
         token=GitHubToken(**token),
     )
-    await user_svc.create_from_list_of_emails(
-        emails=gh_user.emails,
+    user = await githubuser_svc.get_by_name(
         psql=psql,
+        username=gh_user.raw_data["login"],
     )
-    return RedirectResponse(
-        url=f"{env.KOOKABURRA_URL}/?success=true",
-    )
+    if not user:
+        await githubuser_svc.create(
+            psql=psql,
+            user_create=GitHubUserCreate(
+                username=gh_user.raw_data["login"],
+                emails=gh_user.emails,
+            ),
+        )
+    encoded_token = base64.b64encode(GitHubToken(**token).json().encode("utf8"))
+    response = RedirectResponse(url=f"{env.KOOKABURRA_URL}")
+    response.set_cookie("gh_token", _encrypt(encoded_token).decode("utf8"))
+    return response
 
 
 @gh_router.post(
@@ -138,8 +177,8 @@ async def wh_github(
     headers = request.headers
     request = await request.json()
     if request is not None:
-        user = await user_svc.get_by_email(
-            email=request["pusher"]["email"],
+        user = await githubuser_svc.get_by_name(
+            username=request["pusher"]["name"],
             psql=psql,
         )
         if user is None:
@@ -154,3 +193,29 @@ async def wh_github(
             user=user,
         )
     return Response(status_code=200)
+
+
+@llm_router.delete(
+    "/llm/{llm_id}",
+    response_model=BaseResponse,
+)
+async def delete_llm(
+    llm_id: UUID4,
+    request: Request,
+    psql: AsyncSession = Depends(psql_db),
+) -> BaseResponse:
+    current_githubuser = await githubuser_svc.get_current_user(
+        request=request,
+        psql=psql,
+    )
+    if not current_githubuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Please sign up!",
+        )
+    await llm_svc.delete_llm(
+        llm_id=llm_id,
+        githubuser_id=current_githubuser.id,
+        psql=psql,
+    )
+    return BaseResponse(message="🪶")

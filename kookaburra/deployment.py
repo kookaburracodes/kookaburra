@@ -36,5 +36,15 @@ class DeploymentService:
     def get_modal_url(self, llm_id: str) -> str:
         return f"https://{MODAL_ACCOUNT_NAME}--{llm_id}--{MODAL_API}/"
 
+    async def stop_modal_app(self, llm_id: str) -> None:
+        sh.modal(
+            "app",
+            "stop",
+            "--name",
+            llm_id,
+            _out="/tmp/modal_app_stop.log",
+            _new_session=False,
+        )
+
 
 deploy_svc = DeploymentService()

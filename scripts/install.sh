@@ -8,4 +8,6 @@ if [ -z "$CI" ]; then
     pre-commit autoupdate
 
     pyenv rehash
+
+    ./scripts/install-tailwind.sh
 fi

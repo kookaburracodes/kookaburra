@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "_index_nav.html" %}
+{% if request.user.is_authenticated and not request.user.waitlisted %}
+{% include "_home.html" %}
+{% else %}
+{% include "_signup.html" %}
+{% endif %}
+{% endblock %}

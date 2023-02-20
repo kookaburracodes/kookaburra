@@ -103,4 +103,5 @@ def setup_logging_queue() -> None:
 
 
 log = StructuredLogger.create_logger()
+log.propagate = False
 setup_logging_queue()

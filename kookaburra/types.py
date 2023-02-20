@@ -55,6 +55,7 @@ class LoginGitHubResponse(BaseModel):
 class GitHubUserData(BaseModel):
     emails: List
     raw_data: Dict
+    waitlisted: bool = True
 
     @validator("emails")
     def filter_emails(cls, emails: List) -> List:
@@ -67,6 +68,14 @@ class GitHubUserData(BaseModel):
         return email["verified"] and (
             not email["email"].endswith("users.noreply.github.com")
         )
+
+    @property
+    def is_authenticated(self) -> bool:
+        return len(self.emails) > 0
+
+    @property
+    def display_name(self) -> EmailStr:
+        return self.raw_data["login"]
 
 
 class SMSResponse(BaseResponse):

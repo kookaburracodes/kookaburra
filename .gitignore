@@ -151,3 +151,4 @@ tmp/
 .ruff_cache/
 kb/
 *.pem
+node_modules

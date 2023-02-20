@@ -8,6 +8,7 @@ API_V0 = "/api/v0"
 
 ORIGINS = [
     "https://kookaburra.codes",
+    "https://github.com",
 ]
 LOCAL_DOMAINS = [
     "localhost",

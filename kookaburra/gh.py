@@ -14,7 +14,7 @@ from kookaburra.const import _APP, KOOKABURRA_DEPLOY_PATH
 from kookaburra.deployment import deploy_svc
 from kookaburra.exc import KookaburraException
 from kookaburra.llm import llm_svc
-from kookaburra.models import User
+from kookaburra.models import GitHubUser
 from kookaburra.settings import env
 from kookaburra.twilio import twilio_svc
 from kookaburra.types import GitHubToken, GitHubUserData
@@ -24,7 +24,7 @@ class GitHubService:  # pragma: no cover
     def get_github(self, token: GitHubToken) -> Github:
         return Github(login_or_token=token.access_token)
 
-    async def get_user(self, token: GitHubToken) -> GitHubUserData:
+    async def get_gh_user_data(self, token: GitHubToken) -> GitHubUserData:
         emails = await self.get_gh_user_emails(token=token)
         raw_data = await self.get_gh_user(token=token)
         return GitHubUserData(emails=emails, raw_data=raw_data)
@@ -38,7 +38,7 @@ class GitHubService:  # pragma: no cover
         return self.get_github(token=token).get_user().raw_data
 
     async def handle_webhook(
-        self, request: Dict, headers: Dict, user: User, psql: AsyncSession
+        self, request: Dict, headers: Dict, user: GitHubUser, psql: AsyncSession
     ) -> None:
         if await self.is_push(headers=headers):
             await self.handle_push(request=request, psql=psql, user=user)
@@ -46,7 +46,9 @@ class GitHubService:  # pragma: no cover
     async def is_push(self, headers: Dict) -> bool:
         return headers.get("x-github-event", None) == "push"
 
-    async def handle_push(self, request: Dict, psql: AsyncSession, user: User) -> None:
+    async def handle_push(
+        self, request: Dict, psql: AsyncSession, user: GitHubUser
+    ) -> None:
         # if the ref that recieved the push is the default branch, then
         # clone the content into kookaburra_deploy and run the deploy to modal
         ref = request["ref"]
@@ -96,9 +98,9 @@ class GitHubService:  # pragma: no cover
     async def clone_repo(self, request: Dict, to_path: str) -> str:
         clone_url = request["repository"]["clone_url"]
         full_name = request["repository"]["full_name"]
-        jwt = self.make_jwt()
+        jwt = self.make_private_app_cloner_jwt()
         installation_id = await self.get_installation_id(full_name=full_name, jwt=jwt)
-        access_token = await self.get_access_token(
+        access_token = await self.get_access_token_for_app(
             installation_id=installation_id, jwt=jwt
         )
         clone_url = clone_url.replace(
@@ -107,7 +109,7 @@ class GitHubService:  # pragma: no cover
         Repo.clone_from(url=clone_url, to_path=to_path)
         return to_path
 
-    def make_jwt(self) -> str:
+    def make_private_app_cloner_jwt(self) -> str:
         with open(env.GH_APP_PRIVATE_KEY_PATH, "rb") as pem_file:
             signing_key = jwt.jwk_from_pem(pem_file.read())
         payload = {
@@ -136,7 +138,7 @@ class GitHubService:  # pragma: no cover
                 return installation["id"]
         raise KookaburraException(f"No installation found for this repo {full_name}.")
 
-    async def get_access_token(self, installation_id: str, jwt: str) -> str:
+    async def get_access_token_for_app(self, installation_id: str, jwt: str) -> str:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"https://api.github.com/app/installations/{installation_id}/access_tokens",

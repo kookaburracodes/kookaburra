@@ -1,0 +1,40 @@
+<div
+  class="relative overflow-hidden bg-black mb-10 pt-[120px] md:pt-[130px] lg:pt-[160px]"
+>
+    <div class="container text-white">
+        <div class="mb-10 flex flex-wrap items-center justify-center">
+            <div class="w-full md:w-1/2">
+                {% if llms %}
+                <table class="table">
+                <thead>
+                    <tr>
+                    <th>repo</th>
+                    <th>phone</th>
+                    <th></th>
+                    </tr>
+                </thead>
+                <tbody hx-target="closest tr" hx-swap="outerHTML">
+                    {% for llm in llms %}
+                    <tr>
+                        <td class="px-4">{{ llm.clone_url }}</td>
+                        <td class="px-4">{{ llm.phone_number }}</td>
+                        <td>
+                            <button class="bg-warning text-white rounded-lg py-3 px-6 text-base font-medium"
+                                    hx-delete="/api/v0/llm/{{ llm.id }}"
+                                    hx-confirm="Are you sure?">
+                            Delete ❌
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                </table>
+                {% else %}
+                <h1 class="text-3xl font-bold text-white p-5">
+                    Time to deploy a langchain app with Kookaburra! 🚀 Click <a href="https://docs.kookaburra.codes" class="text-primary underline" target="_blank">here</a> to get started
+                </h1>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

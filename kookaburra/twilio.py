@@ -1,12 +1,6 @@
-import urllib.parse
-
-from fastapi import Request
-from sqlmodel.ext.asyncio.session import AsyncSession
 from twilio.rest import Client
 
 from kookaburra.exc import KookaburraException
-from kookaburra.llm import llm_svc
-from kookaburra.log import log
 from kookaburra.settings import env
 
 
@@ -41,28 +35,8 @@ class TwilioService:
         )
         return incoming_phone_number.phone_number
 
-    async def respond(self, request: Request, psql: AsyncSession) -> None:
-        _body = await request.body()
-        body = {
-            v.split("=")[0]: v.split("=")[1]
-            for v in urllib.parse.unquote_plus(_body.decode("utf8")).split("&")
-        }
-        llm = await llm_svc.get_llm_by_phone_number(
-            phone_number=body["To"],
-            psql=psql,
-        )
-        if not llm:
-            log.error(f"Could not find LLM for phone number {body['To']}")
-            return
-        response = await llm_svc.respond(
-            llm=llm,
-            message=body["Body"],
-        )
-        self.send_message(
-            from_number=body["To"],
-            to_number=body["From"],
-            message=response.message,
-        )
+    async def release_phone_number(self, phone_number: str) -> None:
+        await self.client.incoming_phone_numbers(phone_number).delete()
 
 
 twilio_svc = TwilioService()
