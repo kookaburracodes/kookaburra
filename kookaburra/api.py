@@ -160,7 +160,7 @@ async def auth_github(
             ),
         )
     encoded_token = base64.b64encode(GitHubToken(**token).json().encode("utf8"))
-    response = RedirectResponse(url=f"{env.KOOKABURRA_URL}")
+    response = RedirectResponse(url=f"{env.KOOKABURRA_URL}/?success=true")
     response.set_cookie("gh_token", _encrypt(encoded_token).decode("utf8"))
     return response
 
