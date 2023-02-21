@@ -191,6 +191,11 @@ async def wh_github(
                 status_code=403,
                 detail="Please sign up!",
             )
+        if user.waitlisted:
+            raise HTTPException(
+                status_code=403,
+                detail="You are waitlisted!",
+            )
         await gh_svc.handle_webhook(
             request=dict(request),
             headers=dict(headers),
