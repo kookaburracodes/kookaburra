@@ -7,6 +7,7 @@ headers:
 API_V0 = "/api/v0"
 
 ORIGINS = [
+    "https://app.kookaburra.codes",
     "https://kookaburra.codes",
     "https://github.com",
 ]
