@@ -6,35 +6,34 @@ from cryptography.fernet import InvalidToken
 from starlette.authentication import (
     AuthCredentials,
     AuthenticationBackend,
-    AuthenticationError,
 )
 from starlette.requests import HTTPConnection
 
-from kookaburra.gh import gh_svc
+from kookaburra.const import KB_AUTH_TOKEN
 from kookaburra.log import log
-from kookaburra.types import GitHubToken, GitHubUserData
+from kookaburra.types import GitHubUserAuthToken
 from kookaburra.utils import _decrypt
 
 
 class GitHubAuthBackend(AuthenticationBackend):
     async def authenticate(  # type: ignore
         self, request: HTTPConnection
-    ) -> Optional[Tuple[AuthCredentials, GitHubUserData]]:
+    ) -> Optional[Tuple[AuthCredentials, GitHubUserAuthToken]]:
         log.debug("GitHubAuthBackend.authenticate")
-        gh_token = request.cookies.get("gh_token")
-        if gh_token:
+        kb_auth_token = request.cookies.get(KB_AUTH_TOKEN)
+        if kb_auth_token is not None:
             try:
                 _decrypted_decoded_gh_token = base64.b64decode(
-                    _decrypt(gh_token).decode("utf8")
+                    _decrypt(kb_auth_token).decode("utf8")
                 )
             except InvalidToken:
-                request.cookies.pop("gh_token")
+                request.cookies.pop(KB_AUTH_TOKEN)
                 return None
             try:
-                user = await gh_svc.get_gh_user_data(
-                    token=GitHubToken(**json.loads(_decrypted_decoded_gh_token))
-                )
-                return AuthCredentials(["authenticated"]), user
+                token = GitHubUserAuthToken(**json.loads(_decrypted_decoded_gh_token))
+                assert token.is_authenticated
+                return AuthCredentials(["authenticated"]), token
             except Exception:
-                raise AuthenticationError()
+                request.cookies.pop(KB_AUTH_TOKEN)
+                return None
         return None

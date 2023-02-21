@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -69,13 +70,17 @@ class GitHubUserData(BaseModel):
             not email["email"].endswith("users.noreply.github.com")
         )
 
-    @property
-    def is_authenticated(self) -> bool:
-        return len(self.emails) > 0
+
+class GitHubUserAuthToken(BaseModel):
+    display_name: str
+    emails: List
+    raw_data: Dict
+    expiry: int
+    waitlisted: bool
 
     @property
-    def display_name(self) -> EmailStr:
-        return self.raw_data["login"]
+    def is_authenticated(self) -> bool:
+        return self.expiry > int(time.time())
 
 
 class SMSResponse(BaseResponse):

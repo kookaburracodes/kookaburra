@@ -9,7 +9,12 @@ from pydantic import UUID4
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from kookaburra import __version__
-from kookaburra.const import API_V0, LOCAL_DOMAINS
+from kookaburra.const import (
+    API_V0,
+    KB_AUTH_TOKEN,
+    KB_AUTH_TOKEN_EXPIRE_SECONDS,
+    LOCAL_DOMAINS,
+)
 from kookaburra.db import psql_db
 from kookaburra.gh import gh_svc
 from kookaburra.llm import llm_svc
@@ -17,7 +22,13 @@ from kookaburra.log import log
 from kookaburra.models import GitHubUserCreate
 from kookaburra.settings import env
 from kookaburra.twilio import twilio_svc
-from kookaburra.types import BaseResponse, GitHubToken, HealthResponse, SMSResponse
+from kookaburra.types import (
+    BaseResponse,
+    GitHubToken,
+    GitHubUserAuthToken,
+    HealthResponse,
+    SMSResponse,
+)
 from kookaburra.user import githubuser_svc
 from kookaburra.utils import _APIRoute, _encrypt
 
@@ -140,31 +151,46 @@ async def auth_github(
         client_secret=env.GH_CLIENT_SECRET,
         scope=env.GH_OAUTH_SCOPE,
     )
-    token = await client.fetch_token(
+    fetch_token_res = await client.fetch_token(
         url=env.GH_TOKEN_ENDPOINT,
         authorization_response=str(request.url),
     )
+    token = GitHubToken(**fetch_token_res)
     gh_user = await gh_svc.get_gh_user_data(
-        token=GitHubToken(**token),
+        token=token,
     )
     user = await githubuser_svc.get_by_name(
         psql=psql,
         username=gh_user.raw_data["login"],
     )
     if not user:
-        await githubuser_svc.create(
+        user = await githubuser_svc.create(
             psql=psql,
             user_create=GitHubUserCreate(
                 username=gh_user.raw_data["login"],
                 emails=gh_user.emails,
             ),
         )
-    encoded_token = base64.b64encode(GitHubToken(**token).json().encode("utf8"))
-    response = RedirectResponse(url=f"{env.KOOKABURRA_URL}/?success=true")
+    expiry = int((datetime.utcnow() + KB_AUTH_TOKEN_EXPIRE_SECONDS).strftime("%s"))
+    cookie_value = (
+        GitHubUserAuthToken(
+            display_name=gh_user.raw_data["login"],
+            expiry=expiry,
+            emails=gh_user.emails,
+            raw_data=gh_user.raw_data,
+            waitlisted=user.waitlisted,
+        )
+        .json()
+        .encode("utf8")
+    )
+    encoded_cookie_value = base64.b64encode(cookie_value)
+    response = RedirectResponse(
+        url=f"{env.KOOKABURRA_URL}/?success=true",
+    )
     response.set_cookie(
-        key="gh_token",
-        value=_encrypt(encoded_token).decode("utf8"),
-        max_age=60 * 60 * 24 * 7,
+        key=KB_AUTH_TOKEN,
+        value=_encrypt(encoded_cookie_value).decode("utf8"),
+        expires=expiry,
         httponly=True,
     )
     return response

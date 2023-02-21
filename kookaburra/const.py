@@ -1,8 +1,4 @@
-HTTPIMPORT_INI_TEMPLATE = """
-[github]
-headers:
-  Authorization: token {token}
-""".strip()
+from datetime import timedelta
 
 API_V0 = "/api/v0"
 
@@ -21,3 +17,8 @@ MODAL_API = "api.modal.run"
 _APP = "_app"
 
 MODAL_ACCOUNT_NAME = "kookaburracodes"
+
+KB_AUTH_TOKEN = "kb_auth_token"
+
+# TODO: uncomment KB_AUTH_TOKEN_EXPIRE_SECONDS = timedelta(seconds=60 * 60 * 24 * 2)
+KB_AUTH_TOKEN_EXPIRE_SECONDS = timedelta(seconds=10)
