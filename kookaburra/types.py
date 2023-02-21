@@ -75,10 +75,11 @@ class GitHubUserAuthToken(BaseModel):
     emails: List
     raw_data: Dict
     expiry: int
+    is_authenticated: bool = True
 
     @property
-    def is_authenticated(self) -> bool:
-        return self.expiry > int(time.time())
+    def expired(self) -> bool:
+        return int(time.time()) > self.expiry
 
 
 class SMSResponse(BaseResponse):

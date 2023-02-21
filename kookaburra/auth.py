@@ -3,10 +3,7 @@ import json
 from typing import Optional, Tuple
 
 from cryptography.fernet import InvalidToken
-from starlette.authentication import (
-    AuthCredentials,
-    AuthenticationBackend,
-)
+from starlette.authentication import AuthCredentials, AuthenticationBackend
 from starlette.requests import HTTPConnection
 
 from kookaburra.const import KB_AUTH_TOKEN
@@ -31,7 +28,7 @@ class GitHubAuthBackend(AuthenticationBackend):
                 return None
             try:
                 token = GitHubUserAuthToken(**json.loads(_decrypted_decoded_gh_token))
-                assert token.is_authenticated
+                assert not token.expired
                 return AuthCredentials(["authenticated"]), token
             except Exception:
                 request.cookies.pop(KB_AUTH_TOKEN)
