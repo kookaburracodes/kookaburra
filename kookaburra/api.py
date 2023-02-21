@@ -161,7 +161,12 @@ async def auth_github(
         )
     encoded_token = base64.b64encode(GitHubToken(**token).json().encode("utf8"))
     response = RedirectResponse(url=f"{env.KOOKABURRA_URL}/?success=true")
-    response.set_cookie("gh_token", _encrypt(encoded_token).decode("utf8"))
+    response.set_cookie(
+        key="gh_token",
+        value=_encrypt(encoded_token).decode("utf8"),
+        max_age=60 * 60 * 24 * 7,
+        httponly=True,
+    )
     return response
 
 
