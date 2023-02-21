@@ -31,7 +31,7 @@
                     class="mx-auto text-white mb-10 max-w-[400px] text-base text-[#e4e4e4] sm:text-lg sm:leading-relaxed md:text-xl md:leading-relaxed"
                     >
                     Thanks for signing up! <strong><a href="https://twitter.com/kookaburracodes" class="text-primary">Follow Kookaburra on Twitter</a></strong> to
-                    keep tabs on things. We're still in beta, so please be patient as we onboard all you crazy birds 🪶 {{ request.user.display_name }}_{{ request.user.waitlisted }}_{{ waitlisted }}
+                    keep tabs on things. We're still in beta, so please be patient as we onboard all you crazy birds 🪶 {{ request.user.display_name }}_{{ request.user.is_authenticated }}_{{ waitlisted }}
                     </p>
                 </div>
             </div>
