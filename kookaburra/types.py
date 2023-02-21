@@ -56,7 +56,6 @@ class LoginGitHubResponse(BaseModel):
 class GitHubUserData(BaseModel):
     emails: List
     raw_data: Dict
-    waitlisted: bool = True
 
     @validator("emails")
     def filter_emails(cls, emails: List) -> List:
@@ -76,7 +75,6 @@ class GitHubUserAuthToken(BaseModel):
     emails: List
     raw_data: Dict
     expiry: int
-    waitlisted: bool
 
     @property
     def is_authenticated(self) -> bool:

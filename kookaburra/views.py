@@ -27,6 +27,7 @@ async def _index(
     psql: AsyncSession = Depends(psql_db),
 ) -> Response:
     llms = []
+    waitlisted = True
     if request.user.is_authenticated:
         user = await githubuser_svc.get_by_name(
             username=request.user.raw_data["login"],
@@ -37,11 +38,13 @@ async def _index(
                 user=user,
                 psql=psql,
             )
+            waitlisted = bool(user.waitlisted)
     return templates.TemplateResponse(
         name="index.html",
         context={
             "request": request,
             "llms": llms,
+            "waitlisted": waitlisted,
         },
     )
 

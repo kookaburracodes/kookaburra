@@ -178,7 +178,6 @@ async def auth_github(
             expiry=expiry,
             emails=gh_user.emails,
             raw_data=gh_user.raw_data,
-            waitlisted=user.waitlisted,
         )
         .json()
         .encode("utf8")
