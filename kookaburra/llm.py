@@ -121,11 +121,12 @@ class LlmService:
         await psql.delete(llm)
         await psql.commit()
         phone_number = llm.phone_number
-        _llm_id = str(llm.id)
-        # TODO: release the phone number from twilio
         await twilio_svc.release_phone_number(phone_number)
         # TODO: stop the deployed modal app
-        await deploy_svc.stop_modal_app(_llm_id)
+        # _llm_id = str(llm.id)
+        # await deploy_svc.stop_modal_app(_llm_id)
+        # for now this script is run manually
+        # scripts/clean-up-modal.py
 
     async def get(
         self,

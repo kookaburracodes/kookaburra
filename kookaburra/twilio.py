@@ -1,6 +1,7 @@
 from twilio.rest import Client
 
 from kookaburra.exc import KookaburraException
+from kookaburra.log import log
 from kookaburra.settings import env
 
 
@@ -36,7 +37,12 @@ class TwilioService:
         return incoming_phone_number.phone_number
 
     async def release_phone_number(self, phone_number: str) -> None:
-        await self.client.incoming_phone_numbers(phone_number).delete()
+        nums = await self.client.incoming_phone_numbers.list()
+        for num in nums:
+            if num.phone_number == phone_number:
+                self.client.incoming_phone_numbers(num.sid).delete()
+                return
+        log.error(f"Could not find phone number {phone_number}")
 
 
 twilio_svc = TwilioService()
