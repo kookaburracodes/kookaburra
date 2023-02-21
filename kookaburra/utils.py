@@ -1,6 +1,5 @@
 import base64
 import json
-import os
 from typing import Callable, Union
 from uuid import uuid4
 
@@ -18,11 +17,10 @@ from kookaburra.types import (
     ResponseLoggerMessage,
 )
 
-salt = os.urandom(16)
 kdf = PBKDF2HMAC(
     algorithm=hashes.SHA256(),
     length=32,
-    salt=os.urandom(16),
+    salt=env.API_SALT.encode("utf8"),
     iterations=390_000,
 )
 _deriv = kdf.derive(env.API_SECRET_KEY.encode("utf8"))

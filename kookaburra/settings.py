@@ -13,6 +13,11 @@ class _Env(BaseSettings):
         env="API_SECRET_KEY",
         description="The API secret key.",
     )
+    API_SALT: str = Field(
+        ...,
+        env="API_SALT",
+        description="The API salt.",
+    )
     KOOKABURRA_URL: str = Field(
         ...,
         env="KOOKABURRA_URL",
