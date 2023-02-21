@@ -27,17 +27,15 @@ async def _index(
     psql: AsyncSession = Depends(psql_db),
 ) -> Response:
     llms = []
-    if request.user.is_authenticated:
-        user = await githubuser_svc.get_by_name(
-            username=request.user.raw_data["login"],
+    user = await githubuser_svc.get_by_name(
+        username=request.user.raw_data["login"],
+        psql=psql,
+    )
+    if user:
+        llms = await llm_svc.get_llms_for_user(
+            user=user,
             psql=psql,
         )
-        if user:
-            request.user.waitlisted = user.waitlisted
-            llms = await llm_svc.get_llms_for_user(
-                user=user,
-                psql=psql,
-            )
     return templates.TemplateResponse(
         name="index.html",
         context={
