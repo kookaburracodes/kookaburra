@@ -23,14 +23,17 @@ class GitHubAuthBackend(AuthenticationBackend):
                 _decrypted_decoded_gh_token = base64.b64decode(
                     _decrypt(kb_auth_token).decode("utf8")
                 )
-            except InvalidToken:
+            except InvalidToken as e:
+                log.error(f"invalid token {e}")
                 request.cookies.pop(KB_AUTH_TOKEN)
                 return None
             try:
                 token = GitHubUserAuthToken(**json.loads(_decrypted_decoded_gh_token))
                 assert not token.expired
                 return AuthCredentials(["authenticated"]), token
-            except Exception:
+            except Exception as e:
+                log.error(f"exception occurred trying to set token: {e}")
                 request.cookies.pop(KB_AUTH_TOKEN)
                 return None
+        log.error("no token found")
         return None
