@@ -49,48 +49,68 @@ class GitHubService:  # pragma: no cover
     async def handle_push(
         self, request: Dict, psql: AsyncSession, user: GitHubUser
     ) -> None:
-        # if the ref that recieved the push is the default branch, then
-        # clone the content into kookaburra_deploy and run the deploy to modal
-        ref = request["ref"]
-        default_branch = await self.get_default_branch(request=request)
-        if ref.endswith(default_branch):
-            # in a temporary directory, clone the repo
-            with tempfile.TemporaryDirectory() as tmpdir:
-                # copy kookaburra_deployment to the tmpdir
-                # clone the repo into the tmpdir
-                # run the deploy
-                to_path = os.path.join(tmpdir, KOOKABURRA_DEPLOY_PATH, _APP)
-                os.makedirs(to_path, exist_ok=True)
-                to_path = await self.clone_repo(request=request, to_path=to_path)
-                deploy_root = os.path.join(tmpdir, KOOKABURRA_DEPLOY_PATH)
-                # copy the app to the deploy root
-                shutil.copytree(
-                    src=to_path,
-                    dst=deploy_root,
-                    dirs_exist_ok=True,
-                )
-                # remove the app from the deploy root
-                shutil.rmtree(to_path)
-                # copy the kookaburra_deployment to the deploy root
-                shutil.copytree(
-                    src=KOOKABURRA_DEPLOY_PATH,
-                    dst=deploy_root,
-                    dirs_exist_ok=True,
-                )
-                llm = await llm_svc.get_by_clone_url(
-                    clone_url=request["repository"]["clone_url"], psql=psql
-                )
-                if llm is None:
-                    llm = await llm_svc.create_llm(
-                        clone_url=request["repository"]["clone_url"],
-                        psql=psql,
-                        user=user,
-                        phone_number=twilio_svc.provision_phone_number(),
+        await self.post_commit_status(
+            full_name=request["repository"]["full_name"],
+            sha=request["after"],
+            state="pending",
+            description="Deploying...",
+        )
+        try:
+            # if the ref that recieved the push is the default branch, then
+            # clone the content into kookaburra_deploy and run the deploy to modal
+            ref = request["ref"]
+            default_branch = await self.get_default_branch(request=request)
+            if ref.endswith(default_branch):
+                # in a temporary directory, clone the repo
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    # copy kookaburra_deployment to the tmpdir
+                    # clone the repo into the tmpdir
+                    # run the deploy
+                    to_path = os.path.join(tmpdir, KOOKABURRA_DEPLOY_PATH, _APP)
+                    os.makedirs(to_path, exist_ok=True)
+                    to_path = await self.clone_repo(request=request, to_path=to_path)
+                    deploy_root = os.path.join(tmpdir, KOOKABURRA_DEPLOY_PATH)
+                    # copy the app to the deploy root
+                    shutil.copytree(
+                        src=to_path,
+                        dst=deploy_root,
+                        dirs_exist_ok=True,
                     )
-                await deploy_svc.modal_deploy(
-                    tmpdir=tmpdir,
-                    llm_id=str(llm.id),
-                )
+                    # remove the app from the deploy root
+                    shutil.rmtree(to_path)
+                    # copy the kookaburra_deployment to the deploy root
+                    shutil.copytree(
+                        src=KOOKABURRA_DEPLOY_PATH,
+                        dst=deploy_root,
+                        dirs_exist_ok=True,
+                    )
+                    llm = await llm_svc.get_by_clone_url(
+                        clone_url=request["repository"]["clone_url"], psql=psql
+                    )
+                    if llm is None:
+                        llm = await llm_svc.create_llm(
+                            clone_url=request["repository"]["clone_url"],
+                            psql=psql,
+                            user=user,
+                            phone_number=twilio_svc.provision_phone_number(),
+                        )
+                    await deploy_svc.modal_deploy(
+                        tmpdir=tmpdir,
+                        llm_id=str(llm.id),
+                    )
+                    await self.post_commit_status(
+                        full_name=request["repository"]["full_name"],
+                        sha=request["after"],
+                        state="success",
+                        description="Deployed!",
+                    )
+        except Exception:
+            await self.post_commit_status(
+                full_name=request["repository"]["full_name"],
+                sha=request["after"],
+                state="failure",
+                description="Failed to deploy.",
+            )
 
     async def get_default_branch(self, request: Dict) -> str:
         return request["repository"]["default_branch"]
@@ -148,6 +168,30 @@ class GitHubService:  # pragma: no cover
                 },
             )
         return response.json()["token"]
+
+    async def post_commit_status(
+        self, full_name: str, sha: str, state: str, description: str
+    ) -> None:
+        jwt = self.make_private_app_cloner_jwt()
+        installation_id = await self.get_installation_id(full_name=full_name, jwt=jwt)
+        access_token = await self.get_access_token_for_app(
+            installation_id=installation_id, jwt=jwt
+        )
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"https://api.github.com/repos/{full_name}/statuses/{sha}",
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"Bearer {access_token}",
+                },
+                json={
+                    "state": state,
+                    "target_url": env.KOOKABURRA_URL,
+                    "description": description,
+                    "context": "kookaburra",
+                },
+            )
+        return response.json()
 
 
 gh_svc = GitHubService()
