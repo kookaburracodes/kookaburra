@@ -37,7 +37,7 @@ class TwilioService:
         return incoming_phone_number.phone_number
 
     async def release_phone_number(self, phone_number: str) -> None:
-        nums = await self.client.incoming_phone_numbers.list()
+        nums = self.client.incoming_phone_numbers.list()
         for num in nums:
             if num.phone_number == phone_number:
                 self.client.incoming_phone_numbers(num.sid).delete()

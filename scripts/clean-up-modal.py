@@ -34,15 +34,12 @@ async def delete_old_apps(llm_ids: list[str]) -> None:
     for app_stats in res.apps:
         app_id = app_stats.app_id
         desc = app_stats.description
-        print(app_id, desc)
-        if desc in llm_ids:
-            if desc not in llm_ids:
-                print("stopping", app_id)
-                sh.modal(
-                    "app",
-                    "stop",
-                    app_id,
-                )
+        if desc not in llm_ids:
+            sh.modal(
+                "app",
+                "stop",
+                app_id,
+            )
 
 
 async def get_llm_ids() -> list[str]:
