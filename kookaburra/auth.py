@@ -26,7 +26,7 @@ class GitHubAuthBackend(AuthenticationBackend):
                 )
                 assert not token.expired
                 return AuthCredentials(["authenticated"]), token
-            except Exception:
+            except Exception:  # pragma: no cover
+                log.error("GitHubAuthBackend.authenticate: invalid token")
                 request.cookies.pop(KB_AUTH_TOKEN)
-                return None
         return None

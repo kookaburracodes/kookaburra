@@ -122,7 +122,7 @@ if os.getenv("_", "").endswith("pytest") or "pytest" in "".join(sys.argv):
 
 env = _Env()
 
-# if the ENV_FILE environment variable is set, use it
+# if the ENV_FILE environment variable is set, use it as an override
 # this is useful for running alembic migrations against remote databases
 if os.getenv("ENV_FILE") is not None:
     env = _Env(_env_file=os.environ["ENV_FILE"])  # pragma: no cover

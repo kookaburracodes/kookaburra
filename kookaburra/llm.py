@@ -15,7 +15,9 @@ from kookaburra.types import BaseResponse
 
 class LlmService:
     async def get_by_clone_url(
-        self, clone_url: str, psql: AsyncSession
+        self,
+        clone_url: str,
+        psql: AsyncSession,
     ) -> Optional[Llm]:
         results = (
             (
@@ -30,8 +32,12 @@ class LlmService:
         )
         return results
 
-    async def create_llm(
-        self, clone_url: str, psql: AsyncSession, user: GitHubUser, phone_number: str
+    async def create(
+        self,
+        clone_url: str,
+        psql: AsyncSession,
+        user: GitHubUser,
+        phone_number: str,
     ) -> Llm:
         llm_id = uuid4()
         modal_url = deploy_svc.get_modal_url(llm_id=str(llm_id))
@@ -61,7 +67,7 @@ class LlmService:
         self,
         llm: Llm,
         message: str,
-    ) -> BaseResponse:
+    ) -> BaseResponse:  # pragma: no cover
         async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(
                 f"{llm.modal_url.strip('/')}/hey",
@@ -102,7 +108,7 @@ class LlmService:
         )
         return results
 
-    async def delete_llm(
+    async def delete(
         self,
         llm_id: UUID4,
         githubuser_id: UUID4,
@@ -127,16 +133,6 @@ class LlmService:
         # await deploy_svc.stop_modal_app(_llm_id)
         # for now this script is run manually
         # scripts/clean-up-modal.py
-
-    async def get(
-        self,
-        llm_id: UUID4,
-        psql: AsyncSession,
-    ) -> Optional[Llm]:
-        results = (
-            (await psql.execute(select(Llm).where(Llm.id == llm_id))).scalars().first()
-        )
-        return results
 
 
 llm_svc = LlmService()

@@ -12,7 +12,7 @@ from kookaburra.const import (
 from kookaburra.settings import env
 
 
-class DeploymentService:
+class DeploymentService:  # pragma: no cover
     async def modal_deploy(self, tmpdir: str, llm_id: str) -> None:
         sh.modal(
             "token",

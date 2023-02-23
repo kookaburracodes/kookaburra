@@ -144,7 +144,7 @@ async def login_gh(request: Request) -> Response:
 async def auth_github(
     request: Request,
     psql: AsyncSession = Depends(psql_db),
-) -> RedirectResponse:  # pragma: no cover
+) -> RedirectResponse:
     """Redirect to GitHub OAuth."""
     client = AsyncOAuth2Client(
         client_id=env.GH_CLIENT_ID,
@@ -206,35 +206,34 @@ async def wh_github(
     """Handle GitHub webhook."""
     headers = request.headers
     request = await request.json()
-    if request is not None:
-        user = await githubuser_svc.get_by_name(
-            username=request["pusher"]["name"],
-            psql=psql,
+    user = await githubuser_svc.get_by_name(
+        username=request["pusher"]["name"],
+        psql=psql,
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Please sign up!",
         )
-        if user is None:
-            raise HTTPException(
-                status_code=403,
-                detail="Please sign up!",
-            )
-        if user.waitlisted:
-            raise HTTPException(
-                status_code=403,
-                detail="You are waitlisted!",
-            )
-        await gh_svc.handle_webhook(
-            request=dict(request),
-            headers=dict(headers),
-            psql=psql,
-            user=user,
+    if user.waitlisted:
+        raise HTTPException(
+            status_code=403,
+            detail="You are waitlisted!",
         )
-    return Response(status_code=200)
+    await gh_svc.handle_webhook(  # pragma: no cover
+        request=dict(request),
+        headers=dict(headers),
+        psql=psql,
+        user=user,
+    )
+    return Response(status_code=200)  # pragma: no cover
 
 
 @llm_router.delete(
     "/llm/{llm_id}",
     response_model=BaseResponse,
 )
-async def delete_llm(
+async def delete(
     llm_id: UUID4,
     request: Request,
     psql: AsyncSession = Depends(psql_db),
@@ -248,7 +247,7 @@ async def delete_llm(
             status_code=403,
             detail="Please sign up!",
         )
-    await llm_svc.delete_llm(
+    await llm_svc.delete(
         llm_id=llm_id,
         githubuser_id=current_githubuser.id,
         psql=psql,

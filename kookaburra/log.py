@@ -31,7 +31,7 @@ class StructuredMessage:
     def __str__(self) -> str:
         # drop the raw message data, as it's already been logged
         self.kwargs.pop("message", None)
-        return LogEncoder(ensure_ascii=False).encode(self.kwargs)
+        return LogEncoder().encode(self.kwargs)
 
 
 class OnelineFormatter(logging.Formatter):
@@ -90,7 +90,7 @@ def setup_logging_queue() -> None:
 
     root.addHandler(handler)
     for h in root.handlers[:]:
-        if h is not handler:  # pragma: no cover
+        if h is not handler:
             root.removeHandler(h)
             handlers.append(h)
 

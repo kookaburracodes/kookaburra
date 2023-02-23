@@ -5,7 +5,7 @@ from kookaburra.log import log
 from kookaburra.settings import env
 
 
-class TwilioService:
+class TwilioService:  # pragma: no cover
     def __init__(self) -> None:
         self.client = Client(
             env.TWILIO_ACCOUNT_SID,

@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import time
-from typing import Dict, List
+from typing import Dict
 
 import httpx
 import jwt
@@ -25,17 +25,12 @@ class GitHubService:  # pragma: no cover
         return Github(login_or_token=token.access_token)
 
     async def get_gh_user_data(self, token: GitHubToken) -> GitHubUserData:
-        emails = await self.get_gh_user_emails(token=token)
-        raw_data = await self.get_gh_user(token=token)
-        return GitHubUserData(emails=emails, raw_data=raw_data)
-
-    async def get_gh_user_emails(self, token: GitHubToken) -> List[Dict]:
-        return [
-            e._asdict() for e in self.get_github(token=token).get_user().get_emails()
-        ]
-
-    async def get_gh_user(self, token: GitHubToken) -> Dict:
-        return self.get_github(token=token).get_user().raw_data
+        _gh = self.get_github(token=token)
+        _gh_user = _gh.get_user()
+        return GitHubUserData(
+            emails=[e._asdict() for e in _gh_user.get_emails()],
+            raw_data=_gh_user.raw_data,
+        )
 
     async def handle_webhook(
         self, request: Dict, headers: Dict, user: GitHubUser, psql: AsyncSession
@@ -88,7 +83,7 @@ class GitHubService:  # pragma: no cover
                         clone_url=request["repository"]["clone_url"], psql=psql
                     )
                     if llm is None:
-                        llm = await llm_svc.create_llm(
+                        llm = await llm_svc.create(
                             clone_url=request["repository"]["clone_url"],
                             psql=psql,
                             user=user,
