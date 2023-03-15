@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import modal
 from fastapi import FastAPI
 
@@ -5,19 +7,51 @@ from kookaburra_deployment.main import app
 
 stub = modal.Stub()
 
-# TODO: extend this to support user specified packages
-# take pyproject.toml or requirements.txt as input
-# and install the globally unique set of these packages
-# and the prod dependencies of a pyproject or the contents of
-# requirements.txt
-# this should happen in the gh_svc.handle_push function
-image = modal.Image.debian_slim().pip_install(
-    [
-        "fastapi >=0.70.0",
-        "langchain >=0.0.50",
-        "openai >=0.6.0",
-    ]
-)
+DEFAULT_PIP_INSTALL = [
+    "fastapi",
+    "langchain",
+    "openai",
+]
+
+DEFAULT_REQUIREMENTS_PATH = "requirements.txt"
+DEFAULT_APT_INSTALL_PATH = "apt_install.txt"
+DEFAULT_PYPROJECT_PATH = "pyproject.toml"
+
+
+def _read_lines_from_file(path: str) -> list:
+    with open(path, "r") as f:
+        return [line.strip() for line in f.readlines()]
+
+
+APT_PACKAGES_TO_INSTALL = []
+if Path(DEFAULT_APT_INSTALL_PATH).exists():
+    APT_PACKAGES_TO_INSTALL = _read_lines_from_file(DEFAULT_APT_INSTALL_PATH)
+
+
+if Path(DEFAULT_REQUIREMENTS_PATH).exists():
+    image = (
+        modal.Image.debian_slim()
+        .apt_install(APT_PACKAGES_TO_INSTALL)
+        .pip_install(DEFAULT_PIP_INSTALL)
+        .pip_install_from_requirements(
+            requirements_txt=DEFAULT_REQUIREMENTS_PATH,
+        )
+    )
+elif Path(DEFAULT_PYPROJECT_PATH).exists():
+    image = (
+        modal.Image.debian_slim()
+        .apt_install(APT_PACKAGES_TO_INSTALL)
+        .pip_install(DEFAULT_PIP_INSTALL)
+        .pip_install_from_pyproject(
+            pyproject_toml=DEFAULT_PYPROJECT_PATH,
+        )
+    )
+else:
+    image = (
+        modal.Image.debian_slim()
+        .apt_install(APT_PACKAGES_TO_INSTALL)
+        .pip_install(DEFAULT_PIP_INSTALL)
+    )
 
 
 @stub.asgi(

@@ -114,7 +114,7 @@ async def send_message(
     response_class=Response,
 )
 async def login_gh(request: Request) -> Response:
-    redirect_uri = request.url_for("auth_github")
+    redirect_uri = request.url_for("auth_github")._url
     if not any(
         [n in env.KOOKABURRA_URL for n in LOCAL_DOMAINS],
     ):
