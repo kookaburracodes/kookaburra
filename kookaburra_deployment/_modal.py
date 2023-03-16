@@ -14,7 +14,7 @@ stub = modal.Stub()
 image = modal.Image.debian_slim().pip_install(
     [
         "fastapi >=0.70.0",
-        "langchain >=0.0.50",
+        "langchain >=0.0.113",
         "openai >=0.6.0",
     ]
 )
