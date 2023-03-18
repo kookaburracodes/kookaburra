@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import uuid4
 
 import httpx
@@ -67,12 +67,14 @@ class LlmService:
         self,
         llm: Llm,
         message: str,
+        chat_history: Optional[List[Tuple[str, str]]] = None,
     ) -> BaseResponse:  # pragma: no cover
         async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(
                 f"{llm.modal_url.strip('/')}/hey",
                 json={
                     "message": message,
+                    "chat_history": chat_history,
                 },
             )
             return BaseResponse(**response.json())

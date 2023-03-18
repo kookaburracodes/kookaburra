@@ -26,9 +26,8 @@ class DeploymentService:  # pragma: no cover
         )
         pwd = os.getcwd()
         os.chdir(tmpdir)
-        stub_ref = f"{KOOKABURRA_DEPLOY_PATH}/{MODAL_STUB_FILE}"
         deploy(
-            stub_ref=stub_ref,
+            stub_ref=f"{KOOKABURRA_DEPLOY_PATH}/{MODAL_STUB_FILE}",
             name=llm_id,
         )
         os.chdir(pwd)

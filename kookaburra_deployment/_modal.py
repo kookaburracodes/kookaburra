@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import modal
 from fastapi import FastAPI
@@ -13,9 +14,10 @@ DEFAULT_PIP_INSTALL = [
     "openai",
 ]
 
-DEFAULT_REQUIREMENTS_PATH = "requirements.txt"
-DEFAULT_APT_INSTALL_PATH = "apt_install.txt"
-DEFAULT_PYPROJECT_PATH = "pyproject.toml"
+DEPLOY_ROOT = "kookaburra_deployment"
+DEFAULT_REQUIREMENTS_PATH = f"{DEPLOY_ROOT}/requirements.txt"
+DEFAULT_APT_INSTALL_PATH = f"{DEPLOY_ROOT}/apt_install.txt"
+DEFAULT_PYPROJECT_PATH = f"{DEPLOY_ROOT}/pyproject.toml"
 
 
 def _read_lines_from_file(path: str) -> list:
@@ -26,6 +28,19 @@ def _read_lines_from_file(path: str) -> list:
 APT_PACKAGES_TO_INSTALL = []
 if Path(DEFAULT_APT_INSTALL_PATH).exists():
     APT_PACKAGES_TO_INSTALL = _read_lines_from_file(DEFAULT_APT_INSTALL_PATH)
+
+
+def _make_mounts() -> List[modal.Mount]:
+    mounts = []
+    for path in Path(".").glob("**/*"):
+        if path.is_dir() and path.name not in ["__pycache__"]:
+            mounts.append(
+                modal.Mount(
+                    local_dir=path.absolute(),
+                    remote_dir=f"/root/{path}".replace(DEPLOY_ROOT, ""),
+                )
+            )
+    return mounts
 
 
 if Path(DEFAULT_REQUIREMENTS_PATH).exists():
@@ -57,6 +72,7 @@ else:
 @stub.asgi(
     image=image,
     secret=modal.Secret.from_name("kb-openai-api-key"),
+    mounts=_make_mounts(),
 )
 def _api() -> FastAPI:
     return app

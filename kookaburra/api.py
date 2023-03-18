@@ -3,7 +3,14 @@ import urllib.parse
 from datetime import datetime
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+)
 from fastapi.responses import RedirectResponse
 from pydantic import UUID4
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -17,6 +24,7 @@ from kookaburra.const import (
 )
 from kookaburra.db import psql_db
 from kookaburra.gh import gh_svc
+from kookaburra.gs import gs_svc
 from kookaburra.llm import llm_svc
 from kookaburra.log import log
 from kookaburra.models import GitHubUserCreate
@@ -77,6 +85,7 @@ async def get_health() -> HealthResponse:
 )
 async def send_message(
     request: Request,
+    bgt: BackgroundTasks,
     psql: AsyncSession = Depends(psql_db),
 ) -> SMSResponse:
     """Send a message.
@@ -87,8 +96,10 @@ async def send_message(
     """
     _body = await request.body()
     body = {
-        v.split("=")[0]: v.split("=")[1]
-        for v in urllib.parse.unquote_plus(_body.decode("utf8")).split("&")
+        urllib.parse.unquote_plus(v.split("=")[0]): urllib.parse.unquote_plus(
+            v.split("=")[1]
+        )
+        for v in _body.decode("utf8").split("&")
     }
     llm = await llm_svc.get_llm_by_phone_number(
         phone_number=body["To"],
@@ -97,10 +108,25 @@ async def send_message(
     if not llm:
         log.error(f"Could not find LLM for phone number {body['To']}")
         return SMSResponse(message="🪶")
+
+    chat_history = await gs_svc.get_sms_chat_history(
+        llm,
+        body["From"],
+    )
+
     response = await llm_svc.respond(
         llm=llm,
         message=body["Body"],
+        chat_history=chat_history,
     )
+
+    bgt.add_task(
+        gs_svc.upload_sms_chat,
+        llm,
+        body,
+        response,
+    )
+
     twilio_svc.send_message(
         from_number=body["To"],
         to_number=body["From"],

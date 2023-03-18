@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 from typing import Callable, Union
 from uuid import uuid4
@@ -33,6 +34,10 @@ def _encrypt(data: bytes) -> bytes:
 
 def _decrypt(data: str) -> bytes:
     return _fernet.decrypt(data)
+
+
+def _phone_hash(phone: str) -> str:
+    return hashlib.md5(phone.encode("utf8")).hexdigest()
 
 
 class _APIRoute(APIRoute):
