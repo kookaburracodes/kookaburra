@@ -11,35 +11,15 @@ from kookaburra.utils import _phone_hash
 
 
 class GsService:
-    def __init__(self) -> None:
-        self.gs = storage.Client()
-
-    async def upload_sms_chat(
-        self,
-        llm: Llm,
-        body: dict,
-        response: BaseResponse,
-    ) -> None:
-        bucket = self.gs.get_bucket(BUCKET_NAME)
-        _from = _phone_hash(body["From"])
-        _t = int(time.time() * 1000)
-        blob = bucket.blob(f"{llm.id}/{_from}/{_t}/chat.json")
-        blob.upload_from_string(
-            data=json.dumps(
-                {
-                    "_in": body["Body"],
-                    "_out": response.message,
-                    "timestamp": _t,
-                }
-            )
-        )
+    def _gs(self) -> storage.Client:
+        return storage.Client()  # pragma: no cover
 
     async def get_sms_chat_history(
         self,
         llm: Llm,
         phone_number: str,
     ) -> List[Tuple[str, str]]:
-        bucket = self.gs.get_bucket(BUCKET_NAME)
+        bucket = self._gs().get_bucket(BUCKET_NAME)
         _phone_number = _phone_hash(phone_number)
         blobs = bucket.list_blobs(
             prefix=f"{llm.id}/{_phone_number}",
@@ -52,6 +32,26 @@ class GsService:
             for chat in sorted(content, key=lambda x: x["timestamp"])
         ]
         return chat_history
+
+    async def upload_sms_chat(
+        self,
+        llm: Llm,
+        body: dict,
+        response: BaseResponse,
+    ) -> None:
+        bucket = self._gs().get_bucket(BUCKET_NAME)
+        _from = _phone_hash(body["From"])
+        _t = int(time.time() * 1000)
+        blob = bucket.blob(f"{llm.id}/{_from}/{_t}/chat.json")
+        blob.upload_from_string(
+            data=json.dumps(
+                {
+                    "_in": body["Body"],
+                    "_out": response.message,
+                    "timestamp": _t,
+                }
+            )
+        )
 
 
 gs_svc = GsService()

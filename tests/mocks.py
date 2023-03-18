@@ -1,4 +1,4 @@
-from typing import Mapping
+from typing import List, Mapping
 
 
 class MockGithubEmail:
@@ -73,3 +73,29 @@ class MockAsyncOAuth2Client:
             "token_type": "token_type",
             "scope": "scope",
         }
+
+
+class MockGoogleCloudStorageBlob:
+    @staticmethod
+    def download_as_string() -> str:
+        return '{"_in": "message", "_out": "message", "timestamp": 0}'
+
+    @staticmethod
+    def upload_from_string(data: str) -> None:
+        pass
+
+
+class MockGoogleCloudStorageBucket:
+    @staticmethod
+    def list_blobs(prefix: str) -> List:
+        return [MockGoogleCloudStorageBlob(), MockGoogleCloudStorageBlob()]
+
+    @staticmethod
+    def blob(path: str) -> MockGoogleCloudStorageBlob:
+        return MockGoogleCloudStorageBlob()
+
+
+class MockGoogleCloudStorageClient:
+    @staticmethod
+    def get_bucket(bucket_or_name: str) -> MockGoogleCloudStorageBucket:
+        return MockGoogleCloudStorageBucket()

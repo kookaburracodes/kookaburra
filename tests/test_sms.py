@@ -7,10 +7,17 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from kookaburra.const import API_V0
 from kookaburra.models import GitHubUser, GitHubUserCreate, Llm, LLMCreate
 from kookaburra.types import BaseResponse
+from tests.mocks import MockGoogleCloudStorageClient
 
 
 async def test_sms_no_llm(server: AsyncClient) -> None:
-    data = urllib.parse.quote("To=+15555555555&From=+15555555554&Body=Hello world")
+    data = "&".join(
+        [
+            "To=" + urllib.parse.quote("+15555555555"),
+            "From=" + urllib.parse.quote("+15555555554"),
+            "Body=" + urllib.parse.quote("Hello world"),
+        ]
+    )
     response = await server.post(f"{API_V0}/sms", data=data)  # type: ignore
     assert response.status_code == 200
 
@@ -23,7 +30,12 @@ async def test_sms_no_llm(server: AsyncClient) -> None:
     "kookaburra.api.llm_svc.respond",
     return_value=BaseResponse(message="hello world!"),
 )
+@mock.patch(
+    "kookaburra.gs.GsService._gs",
+    return_value=MockGoogleCloudStorageClient,
+)
 async def test_sms_llm(
+    mock_google_storage: mock.MagicMock,
     mock_llm_respond: mock.MagicMock,
     mock_twilio: mock.MagicMock,
     server: AsyncClient,
@@ -51,6 +63,12 @@ async def test_sms_llm(
         await async_db_session.commit()
         assert llm.id is not None
 
-    data = urllib.parse.quote("To=+15555555555&From=+15555555554&Body=Hello world")
+    data = "&".join(
+        [
+            "To=" + urllib.parse.quote("+15555555555"),
+            "From=" + urllib.parse.quote("+15555555554"),
+            "Body=" + urllib.parse.quote("Hello world"),
+        ]
+    )
     response = await server.post(f"{API_V0}/sms", data=data)  # type: ignore
     assert response.status_code == 200
