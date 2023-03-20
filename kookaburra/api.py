@@ -262,6 +262,7 @@ async def wh_github(
 async def delete(
     llm_id: UUID4,
     request: Request,
+    response: Response,
     psql: AsyncSession = Depends(psql_db),
 ) -> BaseResponse:
     current_githubuser = await githubuser_svc.get_current_user(
@@ -278,4 +279,5 @@ async def delete(
         githubuser_id=current_githubuser.id,
         psql=psql,
     )
+    response.headers["HX-Location"] = "/"
     return BaseResponse(message="🪶")
