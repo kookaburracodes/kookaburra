@@ -152,3 +152,4 @@ tmp/
 kb/
 *.pem
 node_modules
+*.psql
